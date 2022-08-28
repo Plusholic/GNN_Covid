@@ -392,11 +392,9 @@ def load_data_and_set_date_city(data, start_date, end_date):
     data = data[['거주시군구', '거주시도', '신고일', '지역세분화']] #'발병일', '연령', '선행확진자_번호', 
     data.dropna(subset=['신고일'], axis=0, inplace=True)
     data.dropna(subset=['지역세분화'], axis=0, inplace=True)
-    
-    # print(data.fillna(0))
-    
     data = data.fillna(0)
-    
+    # print(data.head())
+    # input("press enter : ")
     idx = data.index[0]
     # print(data.loc[idx,'신고일'])
     if type(data.loc[idx,'신고일']) == str:
@@ -405,16 +403,20 @@ def load_data_and_set_date_city(data, start_date, end_date):
         elif data.loc[idx,'신고일'][4] =='.':
             data['신고일'] = pd.to_datetime(data['신고일'], format="%Y.%m.%d")
         
-    elif type(data.loc[idx,'신고일']) == np.float64:
+    elif (type(data.loc[idx,'신고일']) == np.float64) | (type(data.loc[idx,'신고일']) == np.int64):
         data['신고일'] = data['신고일'].astype(int)
         data['신고일'] = pd.to_datetime(data['신고일'], format="%Y%m%d")
     
-    
-    # print(data)
-    
+
+    # print(data['신고일'])
+    # print(data.loc[0, '신고일'])
+    # input("press enter : ")
     data['신고일'] = pd.to_datetime(data['신고일'], format="%Y-%m-%d")
     data = data[(data['신고일'] >= pd.to_datetime(start_date, format="%Y-%m-%d")) & (data['신고일'] <= pd.to_datetime(end_date, format="%Y-%m-%d"))]
     data['확진자'] = [1]*len(data)
+    
+    # print(data.head())
+    # input("press enter : ")
     return data, list(data['지역세분화'].unique())
 
 def make_dummy_date(start_date, end_date):
@@ -509,6 +511,9 @@ def region_preprocessing(path):
 
     # 행정구역 인코딩
     data_list = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/행정구역리스트_2.csv')
+    
+    # columns에서 오른쪽 끝의 ~시, ~구 제거
+    # 수원시 -> 수원, 인천광역시 -> 인천
     for col in data_list.columns:
         if col == '강원도':
             data_list[col] = data_list[col].str.rstrip('시군')
@@ -531,40 +536,14 @@ def region_preprocessing(path):
     return data_test
 
 
-def sort_each_region_df(state_data, region_list, date_df, data_test, tmp_df, type):
+def sort_each_region_df(state_data, region_list, date_df, data_test, tmp_df, category):
     tmp_df = pd.DataFrame({})
-    # if type == 'state':
-    #     region_dict = {'인천' : 0,
-    #                 '서울' : 1,
-    #                 '경기' : 2,
-    #                 '전북' : 3,
-    #                 '광주' : 4,
-    #                 '전남' : 5,
-    #                 '대구' : 6,
-    #                 '경북' : 7,
-    #                 '경남' : 8,
-    #                 '충북' : 9,
-    #                 '제주' : 10,
-    #                 '부산' : 11,
-    #                 '세종' : 12,
-    #                 '강원' : 13,
-    #                 '대전' : 14,
-    #                 '울산' : 15,
-    #                 '충남' : 16}
+
     for region in region_list:
         # region_idx = region_dict[region]
-        daily_df = define_daily_dataframe(state_data, date_df, region, 'state')
+        daily_df = define_daily_dataframe(state_data, date_df, region, category)
         daily_df = pd.concat([tmp_df, daily_df], axis = 1)#, ignore_index=True)
         tmp_df = daily_df
-        
-    # elif type == 'city':
-    #     region_dict = dict(data_test['지역세분화'].value_counts())
-            
-    #     for region in region_dict.keys():
-    #         # region_idx = region_dict[region]
-    #         daily_df = define_daily_dataframe(state_data, date_df, region, 'city')
-    #         daily_df = pd.concat([tmp_df, daily_df], axis = 1)#, ignore_index=True)
-    #         tmp_df = daily_df
 
     # 결측치 채우기, 비어있는 날짜 데이터와 합치기
     daily_df = daily_df.fillna(0.0)
@@ -585,7 +564,7 @@ def merge_each_df(date_df, region_list, path, category):
     
     # city, state 따로 폴더 만들기
     # 점화식 초기값을 전체 날짜로 주고
-    print(folders)
+    # print(folders)
     data = pd.DataFrame(0, index=[i for i in range(len(date_df))], columns=region_list)
     # del data['신고일']
     for files in folders:
