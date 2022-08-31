@@ -40,7 +40,7 @@ def load_data_and_set_date_state(data, start_date, end_date):
     # print(data.loc[idx,'신고일'])
     data = data[(data['신고일'] >= pd.to_datetime(start_date, format="%Y-%m-%d")) & (data['신고일'] <= pd.to_datetime(end_date, format="%Y-%m-%d"))]
     data['확진자'] = [1]*len(data)
-    return data, list(data['거주시도'].unique())[:-1]
+    return data, list(data['거주시도'].unique())
 
 def load_data_and_set_date_city(data, start_date, end_date):
     '''
@@ -172,7 +172,8 @@ def region_preprocessing(path):
     # del data_test['Unnamed: 17']
 
     # 행정구역 인코딩
-    data_list = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/행정구역리스트_수도권.csv')
+    # data_list = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/행정구역리스트_수도권.csv')
+    data_list = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/행정구역리스트_2.csv')
     # print(data_list.columns)
     
     data_test = data_test[data_test['거주시도'].isin(data_list.columns)]
@@ -198,8 +199,9 @@ def region_preprocessing(path):
 
     data_test['지역세분화'] = (data_test['거주시도'] + ' ' + data_test['거주시군구'])
     # data_list = data_list.fillna(0)
-    
-    # 수도권
+    ##############
+    ### 수도권 ###
+    ##############
     data_test['지역세분화'][data_test['지역세분화'].str.contains('일산', na=False)] = '경기 고양시'
     data_test['지역세분화'][data_test['지역세분화'].str.contains('김포', na=False)] = '경기 김포시'
     data_test['지역세분화'][data_test['지역세분화'].str.contains('수원', na=False)] = '경기 수원시'
@@ -211,6 +213,26 @@ def region_preprocessing(path):
     data_test['지역세분화'][data_test['지역세분화'].str.contains('성남', na=False)] = '경기 성남시'
     data_test['지역세분화'][data_test['지역세분화'].str.contains('안산', na=False)] = '경기 안산시'
     data_test['지역세분화'][data_test['지역세분화'].str.contains('고양', na=False)] = '경기 고양시'
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('인천 남구', na=False)] = '인천 미추홀구'
+    
+    ##############
+    ### 충청도 ###
+    ##############
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('세종', na=False)] = '세종 세종시'
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('청주', na=False)] = '충북 청주시'
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('천안', na=False)] = '충남 천안시'
+    
+    ##############
+    ### 경상도 ###
+    ##############
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('창원', na=False)] = '경남 창원시'
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('포항', na=False)] = '경북 포항시'
+    
+    ##############
+    ### 전라도 ###
+    ##############
+    data_test['지역세분화'][data_test['지역세분화'].str.contains('전주', na=False)] = '전북 전주시'
+    
     # print(data_list)
     # input("press enter : ")
     
@@ -264,8 +286,10 @@ def merge_each_df(date_df, region_list, path, category):
 
         tmp = pd.read_csv(f"{files}", encoding='euc-kr', index_col = 0)
         del tmp['신고일']
-        # print(region_list)
-        # print(list(region_list))
+        print(files)
+        print(len(region_list))
+        print(tmp.shape)
+        print(list(region_list))
         # print(files)
         # print(tmp)
         tmp = tmp[list(region_list)]
