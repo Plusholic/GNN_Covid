@@ -15,20 +15,22 @@ class Data2Graph:
 
     def get_adjacency_matrix(self, normalized_k=0.1, int_adj = False):
         """
-        :param distance_df: data frame with three columns: [from, to, distance].
-        :param sensor_ids: list of sensor ids.
-        :param normalized_k: entries that become lower than normalized_k after normalization are set to zero for sparsity.
-        :return: adjacency matrix
+        Parameters
+        ------------
+        normalized_k
+         
+         
+        int_adj
+         make adjacency element to int, then adjacency matrix has not weight
+
         """
         # dist_mx = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/stgcn_wave/data/sensor_graph/distances_kr_metro_city_adj_mx.csv', encoding='cp949', index_col=0)
-        self.dist_mx = self.dist_mx.values        
-            
-        # print(dist_mx)
-        # input("press_enter : ")
+        # self.dist_mx = self.dist_mx.values        
+        
         # Calculates the standard deviation as theta.
-        distances = self.dist_mx[~np.isinf(self.dist_mx)].flatten()
+        distances = self.dist_mx.values[~np.isinf(self.dist_mx.values)].flatten()
         std = distances.std()
-        self.adj_mx = np.exp(-np.square(self.dist_mx / std))
+        self.adj_mx = np.exp(-np.square(self.dist_mx.values / std))
         # Make the adjacent matrix symmetric by taking the max.
         # adj_mx = np.maximum.reduce([adj_mx, adj_mx.T])
 
@@ -36,8 +38,22 @@ class Data2Graph:
         self.adj_mx[self.adj_mx < normalized_k] = 0
         if int_adj == True:
             self.adj_mx = (self.adj_mx > 0).astype(int) # 정수일때랑 다른지 확인해보자 다르다.
-        # return self.adj_mx
 
+        # Make Symmetric Part
+        for i in range(len(self.df.columns)):
+            # 연속적인 인덱스를 반환, 만약 같지 않은 부분이 있으면 건너뛰어서 불연속이 됨
+            tmp = np.where(self.adj_mx[i] == self.adj_mx.transpose()[i])
+            
+            # 불연속 부분을 확인하기 위해 Complement를 정의
+            asymset = set([i for i in range(len(self.df.columns))]) - set(tmp[0])
+            for j in asymset:
+                if self.adj_mx[i][j] > 0:
+                    self.adj_mx[j][i] = self.adj_mx[i][j]
+                    
+                elif self.adj_mx[j][i] > 0:
+                    self.adj_mx[i][j] = self.adj_mx[j][i]
+
+            return self.adj_mx
 
     def make_corr_network(self,
                         threshold = 0.3,
@@ -77,27 +93,40 @@ class Data2Graph:
         
         if int_adj == True:
             self.adj_mx = (self.adj_mx > 0).astype(int) # 정수일때랑 다른지 확인해보자 다르다.
-        self.G = nx.Graph(self.adj_mx)
+        # self.G = nx.Graph(self.adj_mx)
         self.adj_mx = self.adj_mx.values
-        # return G, self.adj_mx
+        # print(self.adj_mx.type())
+        
+        # Make Symmetric Part
+        for i in range(len(self.df.columns)):
+            # 연속적인 인덱스를 반환, 만약 같지 않은 부분이 있으면 건너뛰어서 불연속이 됨
+            tmp = np.where(self.adj_mx[i] == self.adj_mx.transpose()[i])
+            
+            # 불연속 부분을 확인하기 위해 Complement를 정의
+            asymset = set([i for i in range(len(self.df.columns))]) - set(tmp[0])
+            for j in asymset:
+                if self.adj_mx[i][j] > 0:
+                    self.adj_mx[j][i] = self.adj_mx[i][j]
+                    
+                elif self.adj_mx[j][i] > 0:
+                    self.adj_mx[i][j] = self.adj_mx[j][i]
+                    
+            return self.adj_mx
 
-
-    def make_dist_network(self, threshold = 3, int_adj = False):#, draw=True):
+    def make_dist_network(self, threshold = 3, int_adj = False):
         '''
-        Make Distance Network, connection number of each node is threshold
+        Make Distance Network, threshold is connection number of each node
         
         parameter
         ------------------
         threshold = int
-         fix each node edge number
+         fix edge number of each node
         
         int_ajd = bool
          transform that adjacency matrix elements to be integer(0, 1)
          True : edge weight is 1, 0
          False : edge weight is distance value
          
-        return
-        ------------------
         '''
 
         # base dataframe construct
@@ -111,12 +140,27 @@ class Data2Graph:
             # print(base_df)
 
         self.adj_mx += np.eye(len(self.adj_mx),len(self.adj_mx))
-        self.G = nx.Graph(self.adj_mx)
         
         if int_adj == True:
             self.adj_mx = (self.adj_mx > 0).astype(int) # 정수일때랑 다른지 확인해보자 다르다.
         self.adj_mx = self.adj_mx.values
-        # return self.G, self.adj_mx
+        
+        # Make Symmetric Part
+        for i in range(len(self.df.columns)):
+            # 연속적인 인덱스를 반환, 만약 같지 않은 부분이 있으면 건너뛰어서 불연속이 됨
+            tmp = np.where(self.adj_mx[i] == self.adj_mx.transpose()[i])
+            
+            # 불연속 부분을 확인하기 위해 Complement를 정의
+            asymset = set([i for i in range(len(self.df.columns))]) - set(tmp[0])
+            for j in asymset:
+                if self.adj_mx[i][j] > 0:
+                    self.adj_mx[j][i] = self.adj_mx[i][j]
+                    
+                elif self.adj_mx[j][i] > 0:
+                    self.adj_mx[i][j] = self.adj_mx[j][i]
+                    
+            # self.G = 
+            return self.adj_mx
 
 
     def save_graph_html(self, enc, title, save_name):
@@ -129,7 +173,7 @@ class Data2Graph:
         nt3.from_nx(self.G)
         nt3.show_buttons(filter_=['physics'])
         nt3.toggle_physics(True)
-        nt3.show(f"{save_name}.html")
+        nt3.show(f"Result/html/{save_name}.html")
         
         
         # Make Heatmap
@@ -143,25 +187,35 @@ class Data2Graph:
         plt.yticks(fontsize=15, rotation=0)
         plt.xticks(fontsize=15, rotation=90)
         plt.title(title, fontsize=20)
-        plt.savefig(f"{save_name}_corr_heatmap.png")
+        plt.savefig(f"Result/html/{save_name}_corr_heatmap.png")
         
         
         
     def make_network(self, network_type, region_type, norm, int_adj):
         '''
-        network_type : correlation, distance-1, distance-2
-        region_type : state, city
+        
+        Parameters
+        --------------
+        network_type
+         corr, dist_01, dist_02
+        region_type
+         state, city
+        
+        Returns
+        --------------
+         G : dgl graph
+         torch.tensor(self.adj_mx, dtype=torch.float32) : Adjacency Matrix, torch.float32 format
+         graph_type : str
         '''
         #########################
         ## Distance Network 01 ##
         # #######################
 
         if network_type == 'dist_01':
-            graph_type = f'dist_01_{region_type}'
+            graph_type = f'{network_type}_{region_type}'
             # dist_mx = pd.read_csv(f'data/distances_kr_{region_type}_adj_mx.csv', encoding='cp949', index_col=0)
-            self.get_adjacency_matrix(normalized_k=norm, int_adj=int_adj) #Generates the adjacent matrix from the distance between sensors and the sensor ids. 
-            sp_mx = sp.coo_matrix(self.adj_mx)
-            self.G = dgl.from_scipy(sp_mx)
+            self.get_adjacency_matrix(normalized_k=norm, int_adj=int_adj) 
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
             # self.adj_mx = torch.tensor(self.adj_mx, dtype=torch.float32)
 
         #########################
@@ -169,13 +223,11 @@ class Data2Graph:
         # #######################
         
         if network_type == 'dist_02':
-            graph_type = f'dist_02_{region_type}'
-            # distance_df = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN//stgcn_wave/data/sensor_graph/distances_kr_metro_city.csv', dtype={'from': 'str', 'to': 'str'}, index_col=0)
-            # dist_mx = pd.read_csv(f'data/distances_kr_{region_type}_adj_mx.csv', encoding='cp949', index_col=0)
-            # norm = 3
+            graph_type = f'{network_type}_{region_type}'
             self.make_dist_network(threshold=norm, int_adj=int_adj)
-            sp_mx = sp.coo_matrix(self.adj_mx)
-            self.G = dgl.from_scipy(sp_mx)
+            # sp_mx = sp.coo_matrix(self.adj_mx)
+            # self.G = dgl.from_scipy(sp_mx)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
             # self.adj_mx = torch.tensor(self.adj_mx.values, dtype=torch.float32)
 
         #########################
@@ -183,15 +235,39 @@ class Data2Graph:
         #########################
         
         if network_type == 'corr':
-            graph_type = f"Corr_{region_type}"
-            # daily_df_state = pd.read_csv('/Users/jeonjunhwi/문서/Projects/Master_GNN/stgcn_wave/data/smoothing_3_state_mean.csv', encoding="euc-kr",index_col =0)
+            graph_type = f"{network_type}_{region_type}"
             self.make_corr_network(threshold=norm, minus_mean=True, int_adj=int_adj)
-            self.G = dgl.from_networkx(self.G)
-            # self.adj_mx = (self.adj_mx > 0).astype(int) # 정수일때랑 다른지 확인해보자 다르다.
-            # adj_mx = torch.tensor(adj_mx.values, dtype=torch.float32)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
             
-            # Save Network Information
-            pd.DataFrame({'region' : self.dist_mx.columns,
-                        'degree' : self.G.in_degrees()}).to_csv(f'Result/summary/{graph_type}_degree.csv', encoding='cp949')
-        
-        return self.G, torch.tensor(self.adj_mx, dtype=torch.float32), graph_type
+        #######################
+        ## Dist-Corr Network ##
+        #######################
+        if network_type == 'dist-corr':
+            graph_type = f"{network_type}_{region_type}"
+            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
+            dist_adj_mx = self.make_dist_network(threshold=0, int_adj=int_adj)
+            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0, int_adj=int_adj)
+
+            self.adj_mx = np.where((corr_adj_mx > 0) == (dist_adj_mx > norm), corr_adj_mx, 0)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
+            
+        #######################
+        ## Corr-Dist Network ##
+        #######################
+
+        if network_type == 'corr-dist':
+            graph_type = f"{network_type}_{region_type}"
+            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
+            dist_adj_mx = self.make_dist_network(threshold=0, int_adj=int_adj)
+            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0, int_adj=int_adj)
+            
+            self.adj_mx = np.where((corr_adj_mx > norm) == (dist_adj_mx > 0), dist_adj_mx, 0)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))
+
+
+        # Save Network Information
+        pd.DataFrame({'region' : self.dist_mx.columns,
+                    'degree' : G.in_degrees()}).to_csv(f'Result/summary/{graph_type}_degree.csv', encoding='cp949')
+
+
+        return G, torch.tensor(self.adj_mx, dtype=torch.float32), graph_type
