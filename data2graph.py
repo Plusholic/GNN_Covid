@@ -19,7 +19,6 @@ class Data2Graph:
         ------------
         normalized_k
          
-         
         int_adj
          make adjacency element to int, then adjacency matrix has not weight
 
@@ -161,7 +160,98 @@ class Data2Graph:
                     
             # self.G = 
             return self.adj_mx
+        
+        
+        
+    def make_network(self, network_type, region_type, norm, int_adj):
+        '''
+        
+        Parameters
+        --------------
+        network_type
+         corr, dist_01, dist_02, corr-dist, dist-corr
+        region_type
+         state, city
+        
+        Returns
+        --------------
+         G : dgl graph
+         torch.tensor(self.adj_mx, dtype=torch.float32) : Adjacency Matrix, torch.float32 format
+         graph_type : str
+        '''
+        #########################
+        ## Distance Network 01 ##
+        # #######################
 
+        if network_type == 'dist_01':
+            graph_type = f'{network_type}_{region_type}'
+            # dist_mx = pd.read_csv(f'data/distances_kr_{region_type}_adj_mx.csv', encoding='cp949', index_col=0)
+            self.get_adjacency_matrix(normalized_k=norm, int_adj=int_adj) 
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))
+
+            # self.adj_mx = torch.tensor(self.adj_mx, dtype=torch.float32)
+
+        #########################
+        ## Distance Network 02 ##
+        # #######################
+        
+        if network_type == 'dist_02':
+            graph_type = f'{network_type}_{region_type}'
+            self.make_dist_network(threshold=norm, int_adj=int_adj)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))
+
+        #########################
+        ## Correlation Network ##
+        #########################
+        
+        if network_type == 'corr':
+            graph_type = f"{network_type}_{region_type}"
+            self.make_corr_network(threshold=norm, minus_mean=True, int_adj=int_adj)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
+            
+        #######################
+        ## Dist-Corr Network ##
+        #######################
+        if network_type == 'dist-corr':
+            graph_type = f"{network_type}_{region_type}"
+            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
+            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0.1, int_adj=int_adj)
+
+            self.adj_mx = np.where((corr_adj_mx > 0) == (dist_adj_mx > norm), corr_adj_mx, 0)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
+            
+        #######################
+        ## Corr-Dist Network ##
+        #######################
+
+        if network_type == 'corr-dist':
+            graph_type = f"{network_type}_{region_type}"
+            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
+            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0.1, int_adj=int_adj)
+            
+            self.adj_mx = np.where((corr_adj_mx > norm) == (dist_adj_mx > 0), dist_adj_mx, 0)
+            G = dgl.from_networkx(nx.Graph(self.adj_mx))
+
+        ####################
+        ## Complete Graph ##
+        ####################
+
+        if network_type == 'complete':
+            graph_type = f"{network_type}_{region_type}"
+
+            self.adj_mx = pd.DataFrame(1,
+                                       columns=[i for i in range(len(self.df.columns))],
+                                       index=[i for i in range(len(self.df.columns))])
+            
+            G = dgl.from_networkx(nx.Graph(self.adj_mx.values))
+            
+            
+        # Save Network Information
+        pd.DataFrame({'region' : self.dist_mx.columns,
+                    'degree' : G.in_degrees()}).to_csv(f'Result/summary/{graph_type}_degree.csv', encoding='cp949')
+
+
+        return G, torch.tensor(self.adj_mx, dtype=torch.float32), graph_type
 
     def save_graph_html(self, enc, title, save_name):
         
@@ -188,86 +278,3 @@ class Data2Graph:
         plt.xticks(fontsize=15, rotation=90)
         plt.title(title, fontsize=20)
         plt.savefig(f"Result/html/{save_name}_corr_heatmap.png")
-        
-        
-        
-    def make_network(self, network_type, region_type, norm, int_adj):
-        '''
-        
-        Parameters
-        --------------
-        network_type
-         corr, dist_01, dist_02
-        region_type
-         state, city
-        
-        Returns
-        --------------
-         G : dgl graph
-         torch.tensor(self.adj_mx, dtype=torch.float32) : Adjacency Matrix, torch.float32 format
-         graph_type : str
-        '''
-        #########################
-        ## Distance Network 01 ##
-        # #######################
-
-        if network_type == 'dist_01':
-            graph_type = f'{network_type}_{region_type}'
-            # dist_mx = pd.read_csv(f'data/distances_kr_{region_type}_adj_mx.csv', encoding='cp949', index_col=0)
-            self.get_adjacency_matrix(normalized_k=norm, int_adj=int_adj) 
-            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
-            # self.adj_mx = torch.tensor(self.adj_mx, dtype=torch.float32)
-
-        #########################
-        ## Distance Network 02 ##
-        # #######################
-        
-        if network_type == 'dist_02':
-            graph_type = f'{network_type}_{region_type}'
-            self.make_dist_network(threshold=norm, int_adj=int_adj)
-            # sp_mx = sp.coo_matrix(self.adj_mx)
-            # self.G = dgl.from_scipy(sp_mx)
-            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
-            # self.adj_mx = torch.tensor(self.adj_mx.values, dtype=torch.float32)
-
-        #########################
-        ## Correlation Network ##
-        #########################
-        
-        if network_type == 'corr':
-            graph_type = f"{network_type}_{region_type}"
-            self.make_corr_network(threshold=norm, minus_mean=True, int_adj=int_adj)
-            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
-            
-        #######################
-        ## Dist-Corr Network ##
-        #######################
-        if network_type == 'dist-corr':
-            graph_type = f"{network_type}_{region_type}"
-            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
-            dist_adj_mx = self.make_dist_network(threshold=0, int_adj=int_adj)
-            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0, int_adj=int_adj)
-
-            self.adj_mx = np.where((corr_adj_mx > 0) == (dist_adj_mx > norm), corr_adj_mx, 0)
-            G = dgl.from_networkx(nx.Graph(self.adj_mx))   
-            
-        #######################
-        ## Corr-Dist Network ##
-        #######################
-
-        if network_type == 'corr-dist':
-            graph_type = f"{network_type}_{region_type}"
-            corr_adj_mx = self.make_corr_network(threshold=0, minus_mean=True, int_adj=int_adj)
-            dist_adj_mx = self.make_dist_network(threshold=0, int_adj=int_adj)
-            dist_adj_mx = self.get_adjacency_matrix(normalized_k=0, int_adj=int_adj)
-            
-            self.adj_mx = np.where((corr_adj_mx > norm) == (dist_adj_mx > 0), dist_adj_mx, 0)
-            G = dgl.from_networkx(nx.Graph(self.adj_mx))
-
-
-        # Save Network Information
-        pd.DataFrame({'region' : self.dist_mx.columns,
-                    'degree' : G.in_degrees()}).to_csv(f'Result/summary/{graph_type}_degree.csv', encoding='cp949')
-
-
-        return G, torch.tensor(self.adj_mx, dtype=torch.float32), graph_type
