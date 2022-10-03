@@ -8,6 +8,7 @@ from stgraph_trainer.utils import save_figure_predict
 from torch.utils.data import DataLoader
 from stgraph_trainer.models import ProposedSTGNN
 from stgraph_trainer.trainers import ProposedSTGNNTrainer
+from stgraph_trainer.datasets import Data2Graph
 import torch
 import numpy as np
 import pandas as pd
@@ -20,32 +21,24 @@ matplotlib_plot_font()
 MODEL_NAME = "STGNN"
 TIME_STEPS = 5
 BATCH_SIZE = 16
-EPOCHS = 100
+EPOCHS = 50
 learning_rate = 1e-3
 device = torch.device('cuda', 0) if torch.cuda.is_available() else torch.device('cpu')
 
 region_type = 'city'
 df = pd.read_csv(f'/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/KCDC_data/Processing_Results/smoothing_3_{region_type}_mean.csv', index_col=0, encoding='cp949')
-df = df.iloc[100:686] # 12월 까지만 해보자
-
-# region_dict = {}
-# for i, region in enumerate(df.columns):
-#     region_dict[i] = region
-    
-# len_val = int(df.shape[0] * 0.2)
-# len_test = 14
-# len_train = df.shape[0] - len_val - len_test
-
-# train, val, test, _, _, scaler = preprocess_data_for_stgnn(data=df,
-#                                                            len_train=len_train,
-#                                                            len_val=len_val,
-#                                                            len_test=len_test,
-#                                                            time_steps=TIME_STEPS)
+df = df.iloc[100:707] # 델타 : 554, 540, 533 오미크론 : 707, 693, 686 / 
+# df = df.iloc[:326] #340 326 319
+# print(df.index[-1])
+# input(" stop ")
 region_dict = {}
 for i, region in enumerate(df.columns):
     region_dict[i] = region 
-    
-split_date = '2021-11-18'
+
+#####################
+## TEST START DATE ##
+#####################    
+split_date = '2021-11-25' #'2022-07-02' #'2021-11-25' #'2021-06-25' 2020-11-23
 val_ratio = 0.2
 
 train, val, test, _, _, scaler = preprocess_data_for_stgnn(data = df,
@@ -56,7 +49,6 @@ train, val, test, _, _, scaler = preprocess_data_for_stgnn(data = df,
 X_train, y_train = train[0], train[1]
 X_val, y_val = val[0], val[1]
 X_test, y_test = test[0], test[1]
-
 
 X_train = torch.tensor(X_train, dtype=torch.float32).unsqueeze(-1)
 y_train = torch.tensor(y_train, dtype=torch.float32).unsqueeze(-1)
@@ -78,22 +70,18 @@ test_dl = DataLoader(PairDataset(X_test, y_test),
                       batch_size=1,
                       shuffle=False)
 
-from stgraph_trainer.datasets import Data2Graph
-import pandas as pd
-# region_type = 'state'
-# graph_type = f'dist_01_{region_type}'
+
 dist_mx = pd.read_csv(f'data/distances_kr_{region_type}_adj_mx.csv', encoding='cp949', index_col=0)
-# norm = 0
 
-# network_dict = dict({'corr' : [0.3, 0.5, 0.7, 0.9],
-#                      'corr-dist' : [0.3, 0.5, 0.7, 0.9],
-#                      'dist-corr' : [0.3, 0.5, 0.7, 0.9],
-#                      'dist_01' : [0.3, 0.5, 0.7, 0.9],
-#                      'dist_02' : [1, 2, 3],
-#                      'complete' : [0]})
 
-network_dict = dict({'dist_02' : [1, 2, 3],
+network_dict = dict({'corr' : [0.3, 0.5, 0.7, 0.9],
+                     'corr-dist' : [0.3, 0.5, 0.7, 0.9],
+                     'dist-corr' : [0.3, 0.5, 0.7, 0.9],
+                     'dist_01' : [0.3, 0.5, 0.7, 0.9],
+                     'dist_02' : [1, 2, 3],
                      'complete' : [0]})
+
+MAE_total_list, MAPE_total_list, RMSE_total_list, idx_list = [], [], [], []
 
 for network in network_dict.keys():
     for norm in network_dict[network]:
@@ -101,14 +89,15 @@ for network in network_dict.keys():
         G, adj_mx, graph_type = data2network.make_network(network_type=network,
                                                             region_type=region_type,
                                                             norm=norm,
-                                                            int_adj=False) # 대체로 False가 더 좋았음.
+                                                            int_adj=False)
 
         data2network.save_graph_html(enc=region_dict, title=region_type, save_name=f'{graph_type}_{norm}')
 
         # Save name setting
-        date_split = f"{df.index[1]} ~ {df.index[len(train[0])]} ~ {df.index[len(train[0]) + len(val[0])+TIME_STEPS]} ~ {df.index[-1]}"
-        suptitle_ = f"{MODEL_NAME}_{graph_type}_{norm}_NAdam_adj_intint"
-        save_path = 'stgnnmodel.pt'
+        date_split = f"{df.index[1]} ~ {df.index[len(train[0])]} ~ {df.index[len(train[0])+TIME_STEPS + len(val[0])+TIME_STEPS*2]} ~ {df.index[-1]}"
+
+        suptitle_ = f"{MODEL_NAME}_{graph_type}_{norm}"
+        save_path = f"save_model/{MODEL_NAME}_{graph_type}_{norm}_{df.index[1]} ~ {df.index[len(train[0])]} ~ {df.index[len(train[0])+TIME_STEPS + len(val[0])+TIME_STEPS*2]} ~.pt"
 
         # Save Graph Diameter
         import networkx as nx
@@ -131,8 +120,8 @@ for network in network_dict.keys():
                             predicted_time_steps=1,
                             in_channels=X_train.shape[3],
                             spatial_channels=32,
-                            spatial_hidden_channels=16,
-                            spatial_out_channels=16,
+                            spatial_hidden_channels=128, # 16
+                            spatial_out_channels=128, # 16
                             out_channels=16,
                             temporal_kernel=3,
                             drop_rate=0.2).to(device=device)
@@ -156,10 +145,9 @@ for network in network_dict.keys():
                                     raw_test=df.iloc[-(n_test_samples + 1):].values)
 
         history = trainer.train(EPOCHS)
-        # history
 
         y_pred= trainer.predict(shape=df.shape[1])
-        y_pred.shape
+        # y_pred.shape
 
         df2 = pd.DataFrame(y_pred,
                     columns=df.columns,
@@ -180,3 +168,13 @@ for network in network_dict.keys():
                             MAE, MAPE, RMSE,
                             MAE_total, MAPE_total, RMSE_total, 
                             'Result/')
+        
+        MAE_total_list.append(MAE_total)
+        MAPE_total_list.append(MAPE_total)
+        RMSE_total_list.append(RMSE_total)
+        idx_list.append(f'{network}_{norm}')
+
+# Save for Total Metric of Each Metric
+pd.DataFrame({'MAE' : MAE_total_list,
+              'MAPE' : MAPE_total_list,
+              'RMSE' : RMSE_total_list}, index=idx_list).to_csv(f'Result/summary/{MODEL_NAME}_total_metric.csv', encoding='cp949')
