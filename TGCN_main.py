@@ -27,7 +27,8 @@ device = torch.device('cuda', 0) if torch.cuda.is_available() else torch.device(
 
 region_type = 'city'
 df = pd.read_csv(f'/Users/jeonjunhwi/문서/Projects/Master_GNN/Data/KCDC_data/Processing_Results/smoothing_3_{region_type}_mean.csv', index_col=0, encoding='cp949')
-df = df.iloc[100:927] # 델타 : 554, 540, 533 오미크론 : 707, 693, 686 / 2022여름 927
+df = df.iloc[100:707] # 델타 : 554, 540, 533 오미크론 : 707, 693, 686 / 2022여름 927
+# df = df.iloc[:340] #340 326 319
 
 region_dict = {}
 for i, region in enumerate(df.columns):
@@ -36,7 +37,7 @@ for i, region in enumerate(df.columns):
 #####################
 ## TEST START DATE ##
 #####################    
-split_date = '2022-07-02' #'2021-11-25' #'2021-06-25' 
+split_date = '2021-11-25' #'2022-07-02' #'2021-11-25' #'2021-06-25' 
 val_ratio = 0.2
 
 train, val, test, _, _, scaler = preprocess_data_for_stgnn(data = df,
@@ -108,7 +109,10 @@ for network in network_dict.keys():
         suptitle_ = f"{MODEL_NAME}_{graph_type}_{norm}"
         save_path = f"save_model/{MODEL_NAME}_{graph_type}_{norm}_{df.index[1]} ~ {df.index[len(train[0])]} ~ {df.index[len(train[0])+TIME_STEPS + len(val[0])+TIME_STEPS*2]} ~.pt"
 
-        model = TGCNConv(adj_mx = adj_mx, hidden_dim=64, out_dim=16)
+        model = TGCNConv(adj_mx = adj_mx,
+                         hidden_dim=64,
+                         out_dim=64,
+                         num_hop=2)
         loss_func = torch.nn.MSELoss()
         optimizer = torch.optim.NAdam(model.parameters(), lr=learning_rate)
         trainer = TGCNTrainer(model = model,
