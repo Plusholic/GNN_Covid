@@ -5,7 +5,9 @@ def model_selection(MODEL_NAME = None,
                     adj_mx = None,
                     TIME_STEPS = None,
                     device=None,
-                    save_path = None):
+                    save_path = None,
+                    dropedge_savename=None,
+                    dropedge_networkpath=None):
 
     ###### ASTGCN MODEL ######
     if MODEL_NAME == 'ASTGCN':
@@ -43,7 +45,7 @@ def model_selection(MODEL_NAME = None,
         
         config = dict({'hidden_dim' : 64,
                      'out_dim' : 64,
-                     'num_hop' : 2})
+                     'num_hop' : 1})
         
         model = TGCNConv(adj_mx = adj_mx,
                         hidden_dim=config['hidden_dim'],
@@ -57,12 +59,12 @@ def model_selection(MODEL_NAME = None,
         
         config = dict({'predicted_time_steps' : 1,
                      'in_channels' : 1,
-                     'spatial_channels' : 16,
-                     'spatial_hidden_channels' : 16,
-                     'spatial_out_channels' : 16,
+                     'spatial_channels' : 32,
+                     'spatial_hidden_channels' : 64,
+                     'spatial_out_channels' : 64,
                      'out_channels' : 16,
                      'temporal_kernel' : 3,
-                     'num_hop' : 2,
+                     'num_hop' : 1,
                      'drop_rate' : 0.2})
         
         model = ProposedSTGNN(n_nodes=adj_mx.shape[0],
@@ -89,6 +91,11 @@ def model_selection(MODEL_NAME = None,
                      'dropout' : [0.5],
                      'gnn_norm' : None})
         
+        dropedge_dict = dict({'Network_path' : dropedge_networkpath,
+                              'save_name' : dropedge_savename,
+                              'percent' : 0.5,
+                              'cnt' : 0})
+        
         model = GCN(in_feats=1,
                     hidden_feats=config['hidden_feats'],
                     adj_mx = adj_mx,
@@ -98,6 +105,8 @@ def model_selection(MODEL_NAME = None,
                     batchnorm=config['batchnorm'],
                     dropout=config['dropout'],
                     gnn_norm=config['gnn_norm'],
+                    dropedge=False,
+                    dropedge_dict=dropedge_dict,
                     device=device).to(device=device)
         
     ###### DCRNN MODEL ######
@@ -121,7 +130,7 @@ def model_selection(MODEL_NAME = None,
                         max_diffusion_step=config['max_diffusion_step'],
                         cl_decay_steps=config['cl_decay_steps'],
                         filter_type=config['filter_type'],
-                        num_node=adj_mx.shape[0],
+                        num_nodes=adj_mx.shape[0],
                         use_curriculum_learning=config['use_curriculum_learning']).to(device=device)
 
     ###### GCN2 MODEL ######
@@ -144,7 +153,8 @@ def model_selection(MODEL_NAME = None,
                     dropout=config['dropout'],
                     lamda=config['lambda'],
                     alpha=config['alpha'],
-                    variant=config['variant']).to(device=device)
+                    variant=config['variant'],
+                    FourierEmbedding=True).to(device=device)
 
     ###### STGCN MODEL ######
     if MODEL_NAME == 'STGCN':
