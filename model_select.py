@@ -5,9 +5,9 @@ def model_selection(MODEL_NAME = None,
                     adj_mx = None,
                     TIME_STEPS = None,
                     device=None,
-                    save_path = None,
-                    dropedge_savename=None,
-                    dropedge_networkpath=None):
+                    save_path = None):#,
+                    # dropedge_savename=None,
+                    # dropedge_networkpath=None):
 
     ###### ASTGCN MODEL ######
     if MODEL_NAME == 'ASTGCN':
@@ -43,8 +43,8 @@ def model_selection(MODEL_NAME = None,
         print(MODEL_NAME)
         from models import TGCNConv
         
-        config = dict({'hidden_dim' : 64,
-                     'out_dim' : 64,
+        config = dict({'hidden_dim' : 16,
+                     'out_dim' : 16,
                      'num_hop' : 1})
         
         model = TGCNConv(adj_mx = adj_mx,
@@ -59,12 +59,9 @@ def model_selection(MODEL_NAME = None,
         
         config = dict({'predicted_time_steps' : 1,
                      'in_channels' : 1,
-                     'spatial_channels' : 32,
-                     'spatial_hidden_channels' : 64,
-                     'spatial_out_channels' : 64,
-                     'out_channels' : 16,
+                     'spatial_channels' : [128],# 16],
                      'temporal_kernel' : 3,
-                     'num_hop' : 1,
+                     'FourierEmbedding' : False,
                      'drop_rate' : 0.2})
         
         model = ProposedSTGNN(n_nodes=adj_mx.shape[0],
@@ -73,28 +70,21 @@ def model_selection(MODEL_NAME = None,
                               predicted_time_steps=config['predicted_time_steps'],
                               in_channels=config['in_channels'],
                               spatial_channels=config['spatial_channels'],
-                              spatial_hidden_channels=config['spatial_hidden_channels'], # 16 # 오미크론 64-64 델타 16-16
-                              spatial_out_channels=config['spatial_out_channels'], # 16
-                              out_channels=config['out_channels'], # 16
                               temporal_kernel=config['temporal_kernel'],
-                              num_hop=config['num_hop'],
+                            #   FourierEmbedding=True,
+                              FourierEmbedding=False,
                               drop_rate=config['drop_rate']).to(device=device)
 
     ###### GCN MODEL ######
     if MODEL_NAME == 'GCN':
         from models import GCN
         print(MODEL_NAME)
-        config = dict({'hidden_feats' : [16],#, 64],
+        config = dict({'hidden_feats' : [64],#, 64],
                      'activation' : None,
                      'residual' : None,
                      'batchnorm' : None,
                      'dropout' : [0.5],
                      'gnn_norm' : None})
-        
-        dropedge_dict = dict({'Network_path' : dropedge_networkpath,
-                              'save_name' : dropedge_savename,
-                              'percent' : 0.5,
-                              'cnt' : 0})
         
         model = GCN(in_feats=1,
                     hidden_feats=config['hidden_feats'],
@@ -105,17 +95,17 @@ def model_selection(MODEL_NAME = None,
                     batchnorm=config['batchnorm'],
                     dropout=config['dropout'],
                     gnn_norm=config['gnn_norm'],
-                    dropedge=False,
-                    dropedge_dict=dropedge_dict,
+                    FourierEmbedding=True,
+                    # FourierEmbedding=False,
                     device=device).to(device=device)
         
     ###### DCRNN MODEL ######
     if MODEL_NAME == 'DCRNN':
         from models import DCRNNModel
-        config = dict({'rnn_units' : 64,
-                     'num_rnn_layers' : 2,
+        config = dict({'rnn_units' : 16,
+                     'num_rnn_layers' : 1,
                      'horizon' : 1,
-                     'max_diffusion_step' : 2,
+                     'max_diffusion_step' : 1,
                      'cl_decay_steps' : 2000,
                      'filter_type' : 'dual_random_walk',
                      'use_curriculum_learning' : False})
@@ -138,7 +128,7 @@ def model_selection(MODEL_NAME = None,
         print(MODEL_NAME)
         from models import GCNII
         config = dict({'nlayers' : 1,
-                     'nhidden' : 64,
+                     'nhidden' : 16,
                      'dropout' : 0.2,
                      'lambda' : 0.5,
                      'alpha' : 0.1,
@@ -164,7 +154,7 @@ def model_selection(MODEL_NAME = None,
         import dgl
         
         config = dict({'control_str' : 'TSNT', # T로 끝나면 ([16, 1, 1, 229])
-                       'blocks' : [1, 64, 64, 64, 32, 128],
+                       'blocks' : [1, 16, 16, 16, 16, 16],
                        'drop_prob' : 0})
         
         G = dgl.from_networkx(nx.Graph(adj_mx.numpy()))
@@ -177,6 +167,21 @@ def model_selection(MODEL_NAME = None,
                            device=device,
                            control_str=config['control_str']).to(device)
 
+    if MODEL_NAME == 'LSTM':
+        from models import LSTM
+
+        config = {'hidden_size' : 16,
+                  'num_layers' : 1}
+
+        model = LSTM(input_size = 1,
+                    hidden_size = config['hidden_size'],
+                    sequence_length = TIME_STEPS,
+                    num_layers = config['num_layers'],
+                    device = device).to(device)
+
+
     with open(f'{save_path}/config.pkl', 'wb') as f:
         pickle.dump(config, f)
     return model
+
+
