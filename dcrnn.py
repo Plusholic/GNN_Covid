@@ -40,6 +40,7 @@ def calculate_reverse_random_walk_matrix(adj_mx):
 
 def calculate_scaled_laplacian(adj_mx, lambda_max=2, undirected=True):
     if undirected:
+        # print(adj_mx)
         adj_mx = np.maximum.reduce([adj_mx, adj_mx.T])
     L = calculate_normalized_laplacian(adj_mx)
     if lambda_max is None:
@@ -162,6 +163,7 @@ class DCRNNModel(nn.Module, Seq2SeqAttrs):
         self.cl_decay_steps = cl_decay_steps
         self.use_curriculum_learning = use_curriculum_learning # False
         # self._logger = logger
+        self.dropout = nn.Dropout(0.2)
 
     def _compute_sampling_threshold(self, batches_seen):
         return self.cl_decay_steps / (
@@ -222,9 +224,9 @@ class DCRNNModel(nn.Module, Seq2SeqAttrs):
         :return: output: (self.horizon, batch_size, self.num_nodes * self.output_dim)
         """
         # print('DCRNN input shape : ', inputs.shape)
-        encoder_hidden_state = self.encoder(inputs)
+        encoder_hidden_state = self.dropout(self.encoder(inputs))
         # self._logger.debug("Encoder complete, starting decoder")
-        outputs = self.decoder(encoder_hidden_state, labels, batches_seen=batches_seen)
+        outputs = self.dropout(self.decoder(encoder_hidden_state, labels, batches_seen=batches_seen))
         # self._logger.debug("Decoder complete")
         # if batches_seen == 0:
             # self._logger.info(
@@ -320,15 +322,11 @@ class DCGRUCell(torch.nn.Module):
         :return
         - Output: A `2-D` tensor with shape `(B, num_nodes * rnn_units)`.
         """
-        # print('dcgru input shape : ',inputs.shape)
-        # print('dcgru hx shape : ', hx.shape)
         output_size = 2 * self._num_units
-        # print('output size : ', output_size)
         if self._use_gc_for_ru:
             fn = self._gconv
         else:
             fn = self._fc
-        # print(fn(inputs, hx, output_size, bias_start=1.0).shape)
         value = torch.sigmoid(fn(inputs, hx, output_size, bias_start=1.0))
         value = torch.reshape(value, (-1, self._num_nodes, output_size))
         r, u = torch.split(tensor=value, split_size_or_sections=self._num_units, dim=-1)
@@ -362,10 +360,6 @@ class DCGRUCell(torch.nn.Module):
     def _gconv(self, inputs, state, output_size, bias_start=0.0):
         # Reshape input and state to (batch_size, num_nodes, input_dim/state_dim)
         batch_size = inputs.shape[0]
-        # print('_gconv inputs : ', inputs.shape)
-        # print('batch_size[0] : ', batch_size)
-        # print('state : ', state.shape)
-        # print('output_size : ', output_size)
         inputs = torch.reshape(inputs, (batch_size, self._num_nodes, -1))
         state = torch.reshape(state, (batch_size, self._num_nodes, -1))
         inputs_and_state = torch.cat([inputs, state], dim=2)
