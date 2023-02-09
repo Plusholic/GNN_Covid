@@ -5,7 +5,8 @@ def model_selection(MODEL_NAME = None,
                     adj_mx = None,
                     TIME_STEPS = None,
                     device=None,
-                    save_path = None):#,
+                    save_path = None,
+                    num_hop=1):  # ,
                     # dropedge_savename=None,
                     # dropedge_networkpath=None):
 
@@ -20,7 +21,7 @@ def model_selection(MODEL_NAME = None,
                     #  'points_per_hour' : 12,
                      'num_for_predict' : 1,
                      'in_channels' : 1,
-                     'nb_block' : 1,
+                     'nb_block' : num_hop,
                      'K' : 3,
                      'nb_chev_filter' : 16,
                      'nb_time_filter' : 16,
@@ -45,7 +46,7 @@ def model_selection(MODEL_NAME = None,
         
         config = dict({'hidden_dim' : 16,
                      'out_dim' : 16,
-                     'num_hop' : 1})
+                     'num_hop' : 2})
         
         model = TGCNConv(adj_mx = adj_mx,
                         hidden_dim=config['hidden_dim'],
@@ -59,7 +60,7 @@ def model_selection(MODEL_NAME = None,
         
         config = dict({'predicted_time_steps' : 1,
                      'in_channels' : 1,
-                     'spatial_channels' : [128],# 16],
+                     'spatial_channels' : [16],# 16],
                      'temporal_kernel' : 3,
                      'FourierEmbedding' : False,
                      'drop_rate' : 0.2})
@@ -73,18 +74,20 @@ def model_selection(MODEL_NAME = None,
                               temporal_kernel=config['temporal_kernel'],
                             #   FourierEmbedding=True,
                               FourierEmbedding=False,
+                              gnn_norm=False,
                               drop_rate=config['drop_rate']).to(device=device)
 
     ###### GCN MODEL ######
     if MODEL_NAME == 'GCN':
         from models import GCN
         print(MODEL_NAME)
-        config = dict({'hidden_feats' : [64],#, 64],
-                     'activation' : None,
-                     'residual' : None,
-                     'batchnorm' : None,
-                     'dropout' : [0.5],
-                     'gnn_norm' : None})
+
+        config = dict({'hidden_feats': [64 for _ in range(num_hop)],  # , 64],
+                       'activation': None,
+                       'residual': None,
+                       'batchnorm': None,
+                       'dropout': [0.2 for _ in range(num_hop)],
+                       'gnn_norm': None})
         
         model = GCN(in_feats=1,
                     hidden_feats=config['hidden_feats'],
@@ -102,12 +105,12 @@ def model_selection(MODEL_NAME = None,
     ###### DCRNN MODEL ######
     if MODEL_NAME == 'DCRNN':
         from models import DCRNNModel
-        config = dict({'rnn_units' : 16,
-                     'num_rnn_layers' : 1,
+        config = dict({'rnn_units' : 64,
+                     'num_rnn_layers' : num_hop,
                      'horizon' : 1,
-                     'max_diffusion_step' : 1,
-                     'cl_decay_steps' : 2000,
-                     'filter_type' : 'dual_random_walk',
+                     'max_diffusion_step' : 5,
+                     'cl_decay_steps' : 1000,
+                     'filter_type' : "dual_random_walk",#'laplacian',#'dual_random_walk',
                      'use_curriculum_learning' : False})
         
         model = DCRNNModel(adj_mx=adj_mx,

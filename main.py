@@ -14,11 +14,12 @@ from lib import save_figure_predict
 from lib import Trainer
 from lib import preprocess_data
 from model_select import model_selection
-
+torch.manual_seed(2022)
+np.random.seed(2022)
 matplotlib_plot_font()
 
 # MODEL_NAME = "GCN"
-model_list = ['GCN', 'GCN2', 'STGNN', 'STGCN', 'ASTGCN', 'TGCN', 'DCRNN']
+model_list = ['STGCN']#, 'GCN2', 'STGNN', 'STGCN', 'ASTGCN', 'TGCN', 'DCRNN']
 diff_ = '1st'
 # network = 'dist_02'
 # norm = 2
@@ -48,13 +49,14 @@ network_dict = dict({
                         # 'corr' : [0.5, 0.7],
                     #  'corr-dist' : [0.5, 0.7],
                     #  'dist-corr' : [0.7, 0.9],
-                    #  'cross_corr' : [0.3, 0.4],
+                     'cross_corr' : [0.5],
                     #  'cross_corr-dist' : [0.3, 0.4],
                     #  'dist-cross_corr' : [0.7, 0.9],
-                     'dist_01' : [0.7, 0.9],
+                    #  'dist_01' : [0.7, 0.9],
                     #  'dist_02' : [1, 2, 3],
                     #  'complete' : [0],
-                     'identity' : [0]})
+                    #  'identity' : [0],
+                     })
 region_MAE=pd.DataFrame({},index=df.columns)
 region_RMSE=pd.DataFrame({},index=df.columns)
 total_metric=pd.DataFrame({})
@@ -110,7 +112,7 @@ for MODEL_NAME in model_list:
             os.makedirs(Pred_path) # 새로 폴더 생성
             os.makedirs(model_path) # 새로 폴더 생성
 
-            data2network = Data2Graph(distance_matrix = dist_mx, temporal_data = df)
+            data2network = Data2Graph(distance_matrix = dist_mx, temporal_data = df) # 여기서 df.diff()를 썼어야하나?
             G, adj_mx, graph_type = data2network.make_network(network_type=network,
                                                             region_type=region_type,
                                                             norm=norm,

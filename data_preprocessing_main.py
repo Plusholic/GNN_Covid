@@ -61,14 +61,23 @@ final_df_city = merge_each_df(date_df = date_df, region_list = city_list, path =
 
 # df 를 conf_data_state 로 수정해야함.
 # final_df_state = pd.read_csv('Processing_Results/conf_case_state_test.csv', encoding='cp949', index_col=0)
-smoothing_and_save(df = final_df_state, smoothing_window=1, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
-smoothing_and_save(df = final_df_city, smoothing_window=1, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+# smoothing_and_save(df = final_df_state, smoothing_window=1, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+# smoothing_and_save(df = final_df_city, smoothing_window=1, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
 
-smoothing_and_save(df = final_df_state, smoothing_window=3, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
-smoothing_and_save(df = final_df_city, smoothing_window=3, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+# smoothing_and_save(df = final_df_state, smoothing_window=3, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+# smoothing_and_save(df = final_df_city, smoothing_window=3, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
 
-smoothing_and_save(df = final_df_state, smoothing_window=5, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
-smoothing_and_save(df = final_df_city, smoothing_window=5, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+# smoothing_and_save(df = final_df_state, smoothing_window=5, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+# smoothing_and_save(df = final_df_city, smoothing_window=5, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
 
-smoothing_and_save(df = final_df_state, smoothing_window=7, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
-smoothing_and_save(df = final_df_city, smoothing_window=7, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+# smoothing_and_save(df = final_df_state, smoothing_window=7, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+# smoothing_and_save(df = final_df_city, smoothing_window=7, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+
+smoothing_and_save(df = final_df_state, smoothing_window=10, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+smoothing_and_save(df = final_df_city, smoothing_window=10, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+
+smoothing_and_save(df = final_df_state, smoothing_window=20, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+smoothing_and_save(df = final_df_city, smoothing_window=20, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
+
+smoothing_and_save(df = final_df_state, smoothing_window=30, path='./Processing_Results', category='state_mean', df_save=True, fig_save=True)
+smoothing_and_save(df = final_df_city, smoothing_window=30, path='./Processing_Results', category='city_mean', df_save=True, fig_save=False)
